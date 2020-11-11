@@ -5,7 +5,9 @@
 
 
 
-# Use
+# Usage
+
+## Minimal example
 
 A minimal run to create synthetic brightfield images of
 yeast cells is by only specifying how many samples should
@@ -15,6 +17,8 @@ defaults.
     from syntheticyeastcells import create_samples
 
     images, labels = create_samples(100)
+
+## Example with all parameters
 
 Alternatively you can specify these parameters to tweak
 the properties of the images. This example shows the
@@ -61,7 +65,19 @@ default values
       p_white_outside=0.5
     )
 
-# Output
+## Example outputs for all parameters
+
+[n_cells_per_image](images/example-settings-n_cells_per_image.png)
+[min_distance_boundary](images/example-settings-min_distance_boundary.png)
+[r0_range](images/example-settings-r0_range.png)
+[r1_factor_range](images/example-settings-r1_factor_range.png)
+[spatial_blur_std](images/example-settings-spatial_blur_std.png)
+[background_intensity](images/example-settings-background_intensity.png)
+[background_contrast](images/example-settings-background_contrast.png)
+[core_contrast](images/example-settings-core_contrast.png)
+[p_white_outside](images/example-settings-p_white_outside.png)
+
+## Output
 
 `images` is a $n_images \times height \times width \times 3$ greyscale stack of images encoded as uint8,
 and `labels` is a $n_images \times height \times width$ stack of labels encoded as uint32. Each cell
@@ -82,7 +98,7 @@ is encoded as a different integer and the background is encoded as `0`.
       axis.imshow(image)
       axis.imshow(label)
 
-# Create a dataset suitable for detectron2
+## Create a dataset suitable for detectron2
 
     from syntheticyeastcells.detectron2 import create_dataset
 
@@ -113,3 +129,4 @@ is encoded as a different integer and the background is encoded as `0`.
 
       # show a progressbar
       progressbar=True)
+
