@@ -67,14 +67,14 @@ default values
 
 ## Example outputs for all parameters
 
-[n_cells_per_image](images/example-settings-n_cells_per_image.png)
-[min_distance_boundary](images/example-settings-min_distance_boundary.png)
-[r0_range](images/example-settings-r0_range.png)
-[r1_factor_range](images/example-settings-r1_factor_range.png)
-[spatial_blur_std](images/example-settings-spatial_blur_std.png)
-[background_intensity](images/example-settings-background_intensity.png)
-[background_contrast](images/example-settings-background_contrast.png)
-[core_contrast](images/example-settings-core_contrast.png)
+![n_cells_per_image](images/example-settings-n_cells_per_image.png)
+![min_distance_boundary](images/example-settings-min_distance_boundary.png)
+![r0_range](images/example-settings-r0_range.png)
+![r1_factor_range](images/example-settings-r1_factor_range.png)
+![spatial_blur_std](images/example-settings-spatial_blur_std.png)
+![background_intensity](images/example-settings-background_intensity.png)
+![background_contrast](images/example-settings-background_contrast.png)
+![core_contrast](images/example-settings-core_contrast.png)
 [p_white_outside](images/example-settings-p_white_outside.png)
 
 ## Output
