@@ -138,3 +138,24 @@ is encoded as a different integer and the background is encoded as `0`.
       # show a progressbar
       progressbar=True)
 
+    with open(f'{synthetic_data_folder}/labels.json', 'w') as f:
+      json.dump(labels, f)
+
+This results in these files:
+
+    ls '{synthetic_data_folder}/'*    
+    /slow-data/p253591/yeast cells/data/synthetic/v8/labels.json
+
+    /slow-data/p253591/yeast cells/data/synthetic/v8/test:
+    image-0.jpg  image-1.jpg  image-2.jpg
+
+    /slow-data/p253591/yeast cells/data/synthetic/v8/train:
+    image-0.jpg  image-2.jpg  image-4.jpg  image-6.jpg  image-8.jpg
+    image-1.jpg  image-3.jpg  image-5.jpg  image-7.jpg  image-9.jpg
+
+    /slow-data/p253591/yeast cells/data/synthetic/v8/val:
+    image-0.jpg  image-1.jpg  image-2.jpg
+    
+    
+    cat '{synthetic_data_folder}/labels.json'
+    {"test": [{"height": 512, "width": 512, "annotations": [{"bbox": [421.5, 139.5, 434.5, 154.5], "bbox_mode": 0, "segmentation": [[ ... ]], "category_id": 0, "iscrowd": 0}, ...., "valid": ...., "train": ...}
