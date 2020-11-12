@@ -1,6 +1,3 @@
-
-
-
 # Installation
 
 Make sure cuda-10-1 and cudnn are installed. They are needed to create the 
@@ -12,6 +9,8 @@ Make sure cuda-10-1 and cudnn are installed. They are needed to create the
 
 ## Minimal example
 
+[notebook](notebooks/Example%20synthetic%20samples.ipynb)
+
 A minimal run to create synthetic brightfield images of
 yeast cells is by only specifying how many samples should
 be generated. The other parameters are considered at their
@@ -22,6 +21,8 @@ defaults.
     images, labels = create_samples(100)
 
 ## Example with all parameters
+
+[notebook](notebooks/Example%20parameter%20settings.ipynb)
 
 Alternatively you can specify these parameters to tweak
 the properties of the images. This example shows the
@@ -110,6 +111,8 @@ is encoded as a different integer and the background is encoded as `0`.
       axis.imshow(label)
 
 ## Create a dataset suitable for detectron2
+
+[notebook](notebooks/Create%20a%20data%20set%20for%20detectron2%20Mask-RCNN.ipynb)
 
     from syntheticyeastcells.detectron2 import create_dataset
 
