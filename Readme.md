@@ -3,7 +3,10 @@
 
 # Installation
 
+Make sure cuda-10-1 and cudnn are installed. They are needed to create the 
 
+    pip3 install -U torch==1.7.0 torchvision==0.8.1 detectron2 scikit-image u-msgpack-python -f https://dl.fbaipublicfiles.com/detectron2/wheels/cu101/index.html
+    pip3 install .../synthetic-yeast-cells/
 
 # Usage
 
