@@ -4,8 +4,14 @@ from multiprocessing.pool import Pool
 import cv2
 import numpy
 from tqdm.auto import tqdm
-from detectron2.structures import BoxMode
 
+try:
+    from detectron2.structures import BoxMode
+    bbox_mode = BoxMode.XYXY_ABS
+except ImportError:
+    print('detectron2 not installed, assuming value 0 for '
+          'detectron2.structures.BoxMode.XYXY_ABS')
+    bbox_mode = 0
 from syntheticyeastcells import create_samples
 
 
@@ -18,7 +24,7 @@ def get_annotation(label):
 
     return {
         "bbox": [numpy.min(px), numpy.min(py), numpy.max(px), numpy.max(py)],
-        "bbox_mode": BoxMode.XYXY_ABS,
+        "bbox_mode": bbox_mode,
         "segmentation": [contour],
         "category_id": 0,
         "iscrowd": 0
@@ -52,7 +58,7 @@ def process_batch(destination, set_name, start, end,
             (i, f'{destination}/{set_name}/image-{i}.jpg')
             for i in range(start, end)
         }
-        if not os.path.exists(fn)
+        # if not os.path.exists(fn)
     ]
     images, labels = create_samples(
        len(left),
