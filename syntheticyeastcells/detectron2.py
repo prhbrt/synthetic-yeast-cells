@@ -21,6 +21,8 @@ from syntheticyeastcells import create_samples
 
 def get_annotation(label):
     contours, _ = cv2.findContours(label.astype(numpy.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    if len(contours) == 0:
+        return {"bbox": [0, 0, 0, 0], "bbox_mode": bbox_mode, "segmentation": [], "category_id": 0, "iscrowd": 0}
     contour = max(contours, key=len)
     contour = [p_ for p in contour[:, 0, :] + 0.5 for p_ in p]
     contour += contour[:2]
