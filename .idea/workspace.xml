@@ -2,6 +2,10 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="93b767a7-2b02-4597-99c5-9152e7a8fb55" name="Default" comment="">
+      <change afterPath="$PROJECT_DIR$/../yeast-cell-detector/setup.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../yeast-cell-detector/yeastcelldetector/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../yeast-cell-detector/yeastcelldetector/maskrcnn.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/syntheticyeastcells/detectron2.py" beforeDir="false" afterPath="$PROJECT_DIR$/syntheticyeastcells/detectron2.py" afterDir="false" />
     </list>
