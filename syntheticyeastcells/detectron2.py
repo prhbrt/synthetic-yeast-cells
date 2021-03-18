@@ -3,14 +3,18 @@ from multiprocessing.pool import Pool
 
 import cv2
 import numpy
+import warnings
 from tqdm.auto import tqdm
 
 try:
     from detectron2.structures import BoxMode
     bbox_mode = BoxMode.XYXY_ABS
 except ImportError:
-    print('detectron2 not installed, assuming value 0 for '
-          'detectron2.structures.BoxMode.XYXY_ABS')
+    warnings.warn(
+        'detectron2 not installed, assuming value 0 for '
+        'detectron2.structures.BoxMode.XYXY_ABS, '
+        'this will unlikely cause issues, but installing '
+        'detectron2 and running again would be safer.', RuntimeWarning)
     bbox_mode = 0
 from syntheticyeastcells import create_samples
 
