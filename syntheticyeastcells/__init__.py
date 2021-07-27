@@ -2,6 +2,7 @@ import pandas
 import numpy
 import cv2
 from imgaug import augmenters as iaa
+from imgaug.augmentables.segmaps import SegmentationMapsOnImage
 from matplotlib import pyplot
 
 
@@ -119,7 +120,7 @@ def create_sample(size, cells,
                   augmenter=seperate_augmentations,
                   ):
     """Create an image with cells as defined in `cells`"""
-    cores = numpy.zeros(size)
+    cores = numpy.zeros(size) # 
     inner = numpy.zeros(size)
     outer = numpy.zeros(size)
 
@@ -135,11 +136,7 @@ def create_sample(size, cells,
 
     for label, (_, cell) in enumerate(cells.iterrows()):
         draw_cell(*cell[['centerx', 'centery', 'radius0', 'radius1', 'angle', 'white-outside']].values, label)
-
-    aug = augmenter.to_deterministic()
-    for im in [inner, outer, cores]:
-        im[:] = aug.augment_images([im])[0]
-
+    
     background = create_background(cores,
                                    spatial_blur_std=spatial_blur_std,
                                    background_intensity=background_intensity,
@@ -153,7 +150,13 @@ def create_sample(size, cells,
 
     cells = outer - inner
     cells -= cells.min(); cells /= cells.max()  # scale between 0 and 1
-    return background + 0.5 * cells - 0.25, cores
+    image = background + 0.5 * cells - 0.25
+    cores = cores.astype(numpy.int32)
+    
+    segmap = SegmentationMapsOnImage(cores, shape=image.shape)
+    image, cores = augmenter(image=image, segmentation_maps=segmap)
+    image, cores = image, cores.get_arr()
+    return image, cores
 
 
 def create_samples(n_images, n_cells_per_image=100,
