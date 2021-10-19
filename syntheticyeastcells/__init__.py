@@ -2,7 +2,9 @@ import pandas
 import numpy
 import cv2
 from imgaug import augmenters as iaa
+from imgaug.augmentables.segmaps import SegmentationMapsOnImage
 from matplotlib import pyplot
+from collections import Counter
 
 
 def pillar_adder(size=(512, 512), pillars=[
@@ -54,21 +56,17 @@ def pillar_adder(size=(512, 512), pillars=[
     return add_pillars
 
 
-consistent_augmentations = iaa.Sequential([
-    iaa.Fliplr(),
-    iaa.Flipud(),
-    iaa.Rot90(k=(0, 3)),
+contrast_augmentations = iaa.Sequential([
     iaa.GammaContrast(gamma=(0.9, 1.1)),
-    #     iaa.SigmoidContrast(cutoff=0.5),
     iaa.LinearContrast(alpha=(0.95, 1.05))
 ], random_order=True)
 
-seperate_augmentations = iaa.PiecewiseAffine((0.02, 0.03))
+deformation_augmentations = iaa.PiecewiseAffine((0.02, 0.03))
 
 
 def random_cells(n, size=(512, 512),
                  min_distance_boundary=50,    # minimum distance of center from image boundary
-                 r0_range=(2, 14),            # range of the first radius
+                 r0_range=(5, 14),            # range of the first radius
                  r1_factor_range=(0.7, 1.3),  # range of the second radius as a factor of the first.
                  p_white_outside=1.0,         # chance the outside of a cell is white.
                  ):
@@ -84,30 +82,31 @@ def random_cells(n, size=(512, 512),
     r1_factor = randint_range(*r1_factor_range, dtype=numpy.float)
 
     return pandas.DataFrame({
-        'centerx': randint_range(d, size[0] - d),
-        'centery': randint_range(d, size[1] - d),
+        'centerx': randint_range(d, size[0] - 2*d),
+        'centery': randint_range(d, size[1] -  2*d),
         'radius0': r0, 'radius1': (r0 * r1_factor).astype(numpy.int),
         'angle':  randint_range(0, 360),
         'white-outside': numpy.random.rand(n) < p_white_outside
     })
 
 
-def create_background(cores,
+def create_background(bodies,
                       spatial_blur_std=1.5,
-                      background_intensity=0.4,
-                      background_contrast=0.00188,
-                      core_contrast=0.0282,
-                      ):
+                      background_intensity=0.40,
+                      background_contrast=0.01,
+                      core_contrast=0.16):
     """Creates a noisy, blurred background with different intensities
     for where there are cell and where there is nothing"""
-    size = cores.shape
-    n = (int(spatial_blur_std * 10) // 2) * 2 + 1
-    background = cv2.GaussianBlur(numpy.random.randn(*size), (n, n), spatial_blur_std , spatial_blur_std )
-
-    background /= background.std()
-    cores = (cores > 0)
+    size = bodies.shape
+    n = (int(spatial_blur_std * 27) // 2) + 1
+    background = numpy.random.randn(*size)
+    
+    background = cv2.GaussianBlur(background, (n, n), spatial_blur_std , spatial_blur_std )
+    
     a, b, z = background_contrast, core_contrast, background_intensity
-    background = numpy.clip(z + (a + (b-a) * cores) * background, 0, 1)
+    
+    background = z + (a + (b-a) * bodies) * background
+    background = numpy.clip(background, 0, 1)
     return background
 
 
@@ -115,57 +114,71 @@ def create_sample(size, cells,
                   spatial_blur_std=1.5,
                   background_intensity=0.4,
                   background_contrast=0.01,
-                  core_contrast=0.15,
-                  augmenter=seperate_augmentations,
+                  core_contrast=0.16,
+                  deformation_augmenter=deformation_augmentations,
                   ):
     """Create an image with cells as defined in `cells`"""
-    cores = numpy.zeros(size)
-    inner = numpy.zeros(size)
-    outer = numpy.zeros(size)
+    cores = numpy.zeros(size) # 
+    dark = numpy.zeros(size)
+    bright = numpy.zeros(size)
+    bodies = numpy.zeros(size)
 
     def draw_cell(x, y, r0, r1, angle, white_outside, label):
-        nonlocal cores, inner, outer
+        nonlocal cores, bright, dark, bodies
         cores = cv2.ellipse(
-            cores, (x, y), (r0, r1), angle,
-            0, 360, label, -1
-        )
-        a, b = (inner, outer) if white_outside else (outer, inner)
+          cores, (x, y), (r0, r1), angle, 0, 360, label, -1)
+        bodies = cv2.ellipse(
+          bodies, (x, y), (r0 - 1, r1 - 1), angle, 0, 360, 1, -1)
+        a, b = (dark, bright) if white_outside else (bright, dark)
         a = cv2.ellipse(a, (x, y), (r0 - 1, r1 - 1), angle, 0, 360, 1., -1)
         b = cv2.ellipse(b, (x, y), (r0 + 2, r1 + 2), angle, 0, 360, 1., -1)
 
-    for label, (_, cell) in enumerate(cells.iterrows()):
-        draw_cell(*cell[['centerx', 'centery', 'radius0', 'radius1', 'angle', 'white-outside']].values, label)
-
-    aug = augmenter.to_deterministic()
-    for im in [inner, outer, cores]:
-        im[:] = aug.augment_images([im])[0]
-
-    background = create_background(cores,
+    for label, (_, cell) in enumerate(cells.iterrows(), start=1):
+      draw_cell(*cell[['centerx', 'centery', 'radius0', 'radius1', 'angle', 'white-outside']].values, label)
+    
+    aug = deformation_augmenter.to_deterministic()
+    dark, = aug.augment_images([dark])
+    bright, = aug.augment_images([bright])
+    bodies, = aug.augment_images([bodies])
+    cores, = aug.augment_segmentation_maps(
+      [SegmentationMapsOnImage(cores.astype(numpy.int32)[..., None],
+                               shape=cores.shape + (3,))]
+    )
+    cores = cores.get_arr()[..., 0]
+    
+    background = create_background(bodies,
                                    spatial_blur_std=spatial_blur_std,
                                    background_intensity=background_intensity,
                                    background_contrast=background_contrast,
                                    core_contrast=core_contrast)
-
-    for im in [inner, outer]:
+    
+    for im in [bright, dark]:
         im[:] = im - cv2.erode(im, numpy.ones((3, 3)))
         im[:] = cv2.GaussianBlur(im, (11, 11), 2, 2)
         im[:] = im / im.max()
+    
+    boundaries = bright - dark
+    boundaries -= boundaries.min()
+    boundaries /= boundaries.max()
+    boundaries = 0.5 * boundaries - 0.25
 
-    cells = outer - inner
-    cells -= cells.min(); cells /= cells.max()  # scale between 0 and 1
-    return background + 0.5 * cells - 0.25, cores
+    image = background + boundaries
+    cores = cores.astype(numpy.int32)
+    
+    return image, cores
 
 
 def create_samples(n_images, n_cells_per_image=100,
                    size=(512, 512),
                    min_distance_boundary=50,    # minimum distance of center from image boundary
-                   r0_range=(2, 14),            # range of the first radius
+                   r0_range=(5, 14),            # range of the first radius
                    r1_factor_range=(0.7, 1.3),  # range of the second radius as a factor of the first.
                    spatial_blur_std=1.5,
                    background_intensity=0.4,
-                   background_contrast=0.00188,
-                   core_contrast=0.0752,
+                   background_contrast=0.01,
+                   core_contrast=0.16,
                    p_white_outside=1.0,
+                   contrast_augmenter=contrast_augmentations,
                   ):
     """Creates `n` `sz` x `sz` synthetic images of out of focus cells, 
     with m cells in each one. Then for each of the `n` images, `r` repetitions
@@ -183,6 +196,7 @@ def create_samples(n_images, n_cells_per_image=100,
                              min_distance_boundary=min_distance_boundary,
                              r0_range=r0_range, r1_factor_range=r1_factor_range,
                              p_white_outside=p_white_outside)
+        
         image[:], label[:] = create_sample(
             size, cells,
             spatial_blur_std=spatial_blur_std,
@@ -190,10 +204,17 @@ def create_samples(n_images, n_cells_per_image=100,
             background_contrast=background_contrast,
             core_contrast=core_contrast
         )
-        image[:] = add_pillars(image)
-
-    # images -= images.min()
-    # images /= images.max()
+        
+        for a, b in enumerate(sorted(set(label.ravel()))):
+          assert (a == 0) == (b == 0)
+          if a > 0:
+            label[label == b] = a
+         
+        image[:] = add_pillars(image[:])
+    
+    images -= images.min()
+    images /= images.max()
+    images = numpy.clip(contrast_augmenter.augment_images(images), 0, 1)
     images = (255 * images[..., None]).repeat(3, -1).astype(numpy.uint8)
 
     return images, labels

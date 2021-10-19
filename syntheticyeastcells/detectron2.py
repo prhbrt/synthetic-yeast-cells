@@ -5,6 +5,8 @@ import cv2
 import numpy
 import warnings
 from tqdm.auto import tqdm
+from shapely.geometry import Polygon
+
 
 try:
     from detectron2.structures import BoxMode
@@ -23,39 +25,59 @@ def get_annotation(label):
     contours, _ = cv2.findContours(label.astype(numpy.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     if len(contours) == 0:
         return {"bbox": [0, 0, 0, 0], "bbox_mode": bbox_mode, "segmentation": [], "category_id": 0, "iscrowd": 0}
-    contour = max(contours, key=len)
-    contour = [p_ for p in contour[:, 0, :] + 0.5 for p_ in p]
-    contour += contour[:2]
-    px, py = contour[::2], contour[1::2]
-
+    contours = [
+      [p_ for p in contour[:, 0, :] + 0.5 for p_ in p]
+      for contour in contours
+    ]
+    contours = [contour + contour[:2] for contour in contours]
+    
+    points = sum(contours, [])
+    px, py = points[::2], points[1::2]
+    
+    area = sum(
+      Polygon(numpy.array(contour).reshape(-1,2)).area
+      for contour in contours
+      if len(contour) >= 6 # two point polygons have 0 area
+    )
+    
     return {
         "bbox": [numpy.min(px), numpy.min(py), numpy.max(px), numpy.max(py)],
         "bbox_mode": bbox_mode,
-        "segmentation": [contour],
+        "segmentation": contours,
         "category_id": 0,
-        "iscrowd": 0
+        "iscrowd": 0,
+        "area": area,
     }
+      
 
 
-def get_annotations(label):
-    return {
+def get_annotations(label, min_cell_area=60):
+    annotations = {
         'height': label.shape[0],
         'width': label.shape[1],
         'annotations': [
             get_annotation(label == i)
             for i in range(1, label.max() + 1)]}
+    annotations['annotations'] = [
+      annotation
+      for annotation in annotations['annotations']
+      if len(annotation['segmentation']) > 0
+      if annotation['area'] >= min_cell_area
+    ]
+    return annotations
 
 
 def process_batch(destination, set_name, start, end,
                   n_cells_per_image=100,
                   size=(512, 512),
                   min_distance_boundary=50,    # minimum distance of center from image boundary
-                  r0_range=(2, 14),            # range of the first radius
+                  r0_range=(5, 14),            # range of the first radius
                   r1_factor_range=(0.7, 1.3),  # range of the second radius as a factor of the first.
+                  min_cell_area = 60,          # do not label cells smaller than this size due to overlap.
                   spatial_blur_std=1.5,
                   background_intensity=0.4,
-                  background_contrast=0.00188,
-                  core_contrast=0.0752,
+                  background_contrast=0.01,
+                  core_contrast=0.16,
                   p_white_outside=0.5,
                  ):
     os.makedirs(f'{destination}/{set_name}/', exist_ok=True)
@@ -76,12 +98,13 @@ def process_batch(destination, set_name, start, end,
        background_intensity=background_intensity,
        background_contrast=background_contrast,
        core_contrast=core_contrast,
-       p_white_outside=p_white_outside)
+       p_white_outside=p_white_outside,
+    )
 
     data = []
     for (i, filename), label, image in zip(left, labels, images):
         cv2.imwrite(filename, image)
-        data.append(get_annotations(label))
+        data.append(get_annotations(label, min_cell_area=min_cell_area))
         data[-1]['file_name'] = f'{set_name}/image-{i}.jpg'
         data[-1]['image_id'] = f'{set_name}-{i:05d}'
     return data
@@ -94,10 +117,11 @@ def create_dataset(destination,
                    min_distance_boundary=50,    # minimum distance of center from image boundary
                    r0_range=(2, 14),            # range of the first radius
                    r1_factor_range=(0.7, 1.3),  # range of the second radius as a factor of the first.
+                   min_cell_area = 60,          # do not label cells smaller than this size due to overlap.
                    spatial_blur_std=1.5,
                    background_intensity=0.4,
-                   background_contrast=0.00188,
-                   core_contrast=0.0752,
+                   background_contrast=0.01,
+                   core_contrast=0.16,
                    p_white_outside=0.5,
                    njobs=40, batch_size=10,
                    progressbar=True):
@@ -110,7 +134,8 @@ def create_dataset(destination,
         'background_intensity': background_intensity,
         'background_contrast': background_contrast,
         'core_contrast': core_contrast,
-        'p_white_outside': p_white_outside}
+        'p_white_outside': p_white_outside,
+        'min_cell_area': min_cell_area}
     progressbar = tqdm if progressbar else (lambda x: x)
 
     results = dict()
