@@ -164,7 +164,6 @@ def create_sample(size, cells,
 
     image = background + boundaries
     cores = cores.astype(numpy.int32)
-    
     return image, cores
 
 
